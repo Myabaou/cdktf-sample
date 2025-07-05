@@ -48,7 +48,7 @@ export class VpcStack extends cdk.Stack {
     ];
     const natGateways = props.enableNatGateway
       ? props.oneNatGatewayPerAz
-        ? 3
+        ? this.availabilityZones.length
         : 1
       : 0;
 
