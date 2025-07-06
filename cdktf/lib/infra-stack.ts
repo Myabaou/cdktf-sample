@@ -1,6 +1,8 @@
 import { Construct } from "constructs";
-import { TerraformStack } from "cdktf";
+import { TerraformStack, TerraformOutput } from "cdktf";
 import { AwsProvider } from "@cdktf/provider-aws/lib/provider";
+
+// VPC関連のインポート
 import { Vpc } from "@cdktf/provider-aws/lib/vpc";
 import { InternetGateway } from "@cdktf/provider-aws/lib/internet-gateway";
 import { Subnet } from "@cdktf/provider-aws/lib/subnet";
@@ -11,16 +13,42 @@ import { NatGateway } from "@cdktf/provider-aws/lib/nat-gateway";
 import { Eip } from "@cdktf/provider-aws/lib/eip";
 import { DataAwsAvailabilityZones } from "@cdktf/provider-aws/lib/data-aws-availability-zones";
 
-export interface VpcStackProps {
+// SQS関連のインポート
+import { SqsQueue } from "@cdktf/provider-aws/lib/sqs-queue";
+import { SqsQueuePolicy } from "@cdktf/provider-aws/lib/sqs-queue-policy";
+import { DataAwsIamPolicyDocument } from "@cdktf/provider-aws/lib/data-aws-iam-policy-document";
+import { DataAwsCallerIdentity } from "@cdktf/provider-aws/lib/data-aws-caller-identity";
+
+export interface InfraStackProps {
   stage: string;
   region: string;
+  // VPC設定
   cidr: string;
   enableNatGateway: boolean;
   oneNatGatewayPerAz: boolean;
+  // SQS設定
+  sqs: {
+    enableDlq: boolean;
+    visibilityTimeoutSeconds: number;
+    messageRetentionSeconds: number;
+    maxReceiveCount: number;
+  };
 }
 
-export class VpcStack extends TerraformStack {
-  constructor(scope: Construct, id: string, props: VpcStackProps) {
+export class InfraStack extends TerraformStack {
+  // VPC関連のプロパティ
+  public readonly vpcId: string;
+  public readonly publicSubnetIds: string[];
+  public readonly privateSubnetIds: string[];
+  public readonly isolatedSubnetIds: string[];
+
+  // SQS関連のプロパティ
+  public readonly mainQueueUrl: string;
+  public readonly mainQueueArn: string;
+  public readonly dlqUrl?: string;
+  public readonly dlqArn?: string;
+
+  constructor(scope: Construct, id: string, props: InfraStackProps) {
     super(scope, id);
 
     // AWS Provider
@@ -28,10 +56,15 @@ export class VpcStack extends TerraformStack {
       region: props.region,
     });
 
-    // Get availability zones
+    // Get current AWS account ID and availability zones
+    const current = new DataAwsCallerIdentity(this, "current", {});
     const azs = new DataAwsAvailabilityZones(this, "azs", {
       state: "available",
     });
+
+    // ===================
+    // VPC リソース
+    // ===================
 
     // VPC
     const vpc = new Vpc(this, "vpc", {
@@ -56,6 +89,7 @@ export class VpcStack extends TerraformStack {
 
     // Public Subnets
     const publicSubnets: Subnet[] = [];
+    const privateSubnets: Subnet[] = [];
     const publicRouteTable = new RouteTable(this, "public-rt", {
       vpcId: vpc.id,
       tags: {
@@ -90,9 +124,8 @@ export class VpcStack extends TerraformStack {
       publicSubnets.push(subnet);
     }
 
-    // Private Subnets
+    // Private Subnets with NAT Gateway
     if (props.enableNatGateway) {
-      const privateSubnets: Subnet[] = [];
       const natGateways: NatGateway[] = [];
 
       // Create NAT Gateways
@@ -171,6 +204,141 @@ export class VpcStack extends TerraformStack {
       });
 
       isolatedSubnets.push(subnet);
+    }
+
+    // ===================
+    // SQS リソース
+    // ===================
+
+    // Dead Letter Queue (if enabled)
+    let dlq: SqsQueue | undefined;
+    if (props.sqs.enableDlq) {
+      dlq = new SqsQueue(this, "dlq", {
+        name: `${props.stage}-dlq-cdktf`,
+        messageRetentionSeconds: props.sqs.messageRetentionSeconds,
+        tags: {
+          Name: `${props.stage}-dlq-cdktf`,
+          Environment: props.stage,
+          ManagedBy: "CDKTF",
+        },
+      });
+
+      this.dlqUrl = dlq.url;
+      this.dlqArn = dlq.arn;
+    }
+
+    // Main Queue
+    const mainQueue = new SqsQueue(this, "main-queue", {
+      name: `${props.stage}-main-queue-cdktf`,
+      visibilityTimeoutSeconds: props.sqs.visibilityTimeoutSeconds,
+      messageRetentionSeconds: props.sqs.messageRetentionSeconds,
+      redrivePolicy:
+        props.sqs.enableDlq && dlq
+          ? JSON.stringify({
+              deadLetterTargetArn: dlq.arn,
+              maxReceiveCount: props.sqs.maxReceiveCount,
+            })
+          : undefined,
+      tags: {
+        Name: `${props.stage}-main-queue-cdktf`,
+        Environment: props.stage,
+        ManagedBy: "CDKTF",
+      },
+    });
+
+    // Queue Policy
+    const queuePolicyDocument = new DataAwsIamPolicyDocument(
+      this,
+      "queue-policy-document",
+      {
+        statement: [
+          {
+            sid: "AllowCurrentAccountAccess",
+            effect: "Allow",
+            principals: [
+              {
+                type: "AWS",
+                identifiers: ["*"],
+              },
+            ],
+            actions: [
+              "sqs:SendMessage",
+              "sqs:ReceiveMessage",
+              "sqs:DeleteMessage",
+              "sqs:GetQueueAttributes",
+            ],
+            resources: [mainQueue.arn],
+            condition: [
+              {
+                test: "StringEquals",
+                variable: "aws:SourceAccount",
+                values: [current.accountId],
+              },
+            ],
+          },
+        ],
+      }
+    );
+
+    new SqsQueuePolicy(this, "queue-policy", {
+      queueUrl: mainQueue.url,
+      policy: queuePolicyDocument.json,
+    });
+
+    // Store values for reference
+    this.vpcId = vpc.id;
+    this.publicSubnetIds = publicSubnets.map((subnet) => subnet.id);
+    this.privateSubnetIds = privateSubnets.map((subnet) => subnet.id);
+    this.isolatedSubnetIds = isolatedSubnets.map((subnet) => subnet.id);
+    this.mainQueueUrl = mainQueue.url;
+    this.mainQueueArn = mainQueue.arn;
+
+    // ===================
+    // Terraform Outputs
+    // ===================
+
+    // VPC Outputs
+    new TerraformOutput(this, "vpc_id", {
+      value: vpc.id,
+      description: "VPC ID",
+    });
+
+    new TerraformOutput(this, "public_subnet_ids", {
+      value: publicSubnets.map((subnet) => subnet.id),
+      description: "Public subnet IDs",
+    });
+
+    new TerraformOutput(this, "private_subnet_ids", {
+      value: privateSubnets.map((subnet) => subnet.id),
+      description: "Private subnet IDs",
+    });
+
+    new TerraformOutput(this, "isolated_subnet_ids", {
+      value: isolatedSubnets.map((subnet) => subnet.id),
+      description: "Isolated subnet IDs",
+    });
+
+    // SQS Outputs
+    new TerraformOutput(this, "main_queue_url", {
+      value: mainQueue.url,
+      description: "Main SQS Queue URL",
+    });
+
+    new TerraformOutput(this, "main_queue_arn", {
+      value: mainQueue.arn,
+      description: "Main SQS Queue ARN",
+    });
+
+    if (props.sqs.enableDlq && dlq) {
+      new TerraformOutput(this, "dlq_url", {
+        value: dlq.url,
+        description: "Dead Letter Queue URL",
+      });
+
+      new TerraformOutput(this, "dlq_arn", {
+        value: dlq.arn,
+        description: "Dead Letter Queue ARN",
+      });
     }
   }
 
