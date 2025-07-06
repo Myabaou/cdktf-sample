@@ -14,13 +14,26 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "upgrade": "npm i cdktf@latest cdktf-cli@latest",
-    "upgrade:next": "npm i cdktf@next cdktf-cli@next"
+    "upgrade:next": "npm i cdktf@next cdktf-cli@next",
+    "diff": "cdktf diff",
+    "deploy": "cdktf deploy",
+    "destroy": "cdktf destroy",
+    "diff:dev": "STAGE=dev cdktf diff",
+    "deploy:dev": "STAGE=dev cdktf deploy",
+    "destroy:dev": "STAGE=dev cdktf destroy",
+    "diff:stg": "STAGE=stg cdktf diff",
+    "deploy:stg": "STAGE=stg cdktf deploy",
+    "destroy:stg": "STAGE=stg cdktf destroy",
+    "diff:prd": "STAGE=prd cdktf diff",
+    "deploy:prd": "STAGE=prd cdktf deploy",
+    "destroy:prd": "STAGE=prd cdktf destroy"
   },
   "engines": {
     "node": ">=18.0"
   },
   "dependencies": {
-    "cdktf": "^0.20.12",
+    "@cdktf/provider-aws": "^21.1.0",
+    "cdktf": "^0.21.0",
     "constructs": "^10.4.2"
   },
   "devDependencies": {
