@@ -1,0 +1,47 @@
+{
+  "name": "cdktf",
+  "version": "1.0.0",
+  "main": "main.js",
+  "types": "main.ts",
+  "license": "MPL-2.0",
+  "private": true,
+  "scripts": {
+    "get": "cdktf get",
+    "build": "tsc",
+    "synth": "cdktf synth",
+    "compile": "tsc --pretty",
+    "watch": "tsc -w",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "upgrade": "npm i cdktf@latest cdktf-cli@latest",
+    "upgrade:next": "npm i cdktf@next cdktf-cli@next",
+    "diff": "cdktf diff",
+    "deploy": "cdktf deploy",
+    "destroy": "cdktf destroy",
+    "diff:dev": "STAGE=dev cdktf diff",
+    "deploy:dev": "STAGE=dev cdktf deploy",
+    "destroy:dev": "STAGE=dev cdktf destroy",
+    "diff:stg": "STAGE=stg cdktf diff",
+    "deploy:stg": "STAGE=stg cdktf deploy",
+    "destroy:stg": "STAGE=stg cdktf destroy",
+    "diff:prd": "STAGE=prd cdktf diff",
+    "deploy:prd": "STAGE=prd cdktf deploy",
+    "destroy:prd": "STAGE=prd cdktf destroy"
+  },
+  "engines": {
+    "node": ">=18.0"
+  },
+  "dependencies": {
+    "@cdktf/provider-aws": "^21.1.0",
+    "cdktf": "^0.21.0",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.10",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
