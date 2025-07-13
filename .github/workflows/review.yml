@@ -21,7 +21,7 @@ env:
 
 jobs:
   review:
-    runs-on: ARM-Runner-Default
+    runs-on: ubuntu-latest
     if: github.event.action == 'opened' || (github.event.action == 'labeled' && github.event.label.name == 'ai-review')
     timeout-minutes: 10
     steps:
