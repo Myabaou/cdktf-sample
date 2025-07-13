@@ -4,6 +4,7 @@ import { AwsProvider } from "@cdktf/provider-aws/lib/provider";
 import { Environment } from "./environment";
 import { VpcModule } from "../modules/vpc";
 import { SqsModule } from "../modules/sqs";
+import { CdnModule } from "../modules/cdn";
 
 interface InfraStackProps {
   stage: string;
@@ -11,9 +12,6 @@ interface InfraStackProps {
 }
 
 export class InfraStack extends TerraformStack {
-  public readonly vpcModule: VpcModule;
-  public readonly sqsModule: SqsModule;
-
   constructor(scope: Construct, id: string, props: InfraStackProps) {
     super(scope, id);
 
@@ -23,7 +21,7 @@ export class InfraStack extends TerraformStack {
     });
 
     // VPC Module
-    this.vpcModule = new VpcModule(this, "vpc", {
+    new VpcModule(this, "vpc", {
       stage: props.stage,
       cidr: props.environment.cidr,
       enableNatGateway: props.environment.enableNatGateway,
@@ -31,12 +29,18 @@ export class InfraStack extends TerraformStack {
     });
 
     // SQS Module
-    this.sqsModule = new SqsModule(this, "sqs", {
+    new SqsModule(this, "sqs", {
       stage: props.stage,
       enableDlq: props.environment.sqs.enableDlq,
       visibilityTimeoutSeconds: props.environment.sqs.visibilityTimeoutSeconds,
       messageRetentionSeconds: props.environment.sqs.messageRetentionSeconds,
       maxReceiveCount: props.environment.sqs.maxReceiveCount,
+    });
+
+    // Cloudfront CDN Module
+    new CdnModule(this, "cdn", {
+      stage: props.stage,
+      domainName: "1101.com", // 実際のオリジンドメインに変更してください
     });
   }
 }

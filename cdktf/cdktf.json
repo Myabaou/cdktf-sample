@@ -6,7 +6,13 @@
   "terraformProviders": [
     "aws@~> 5.0"
   ],
-  "terraformModules": [],
+  "terraformModules": [
+   {
+    "name":"cdn",
+    "source": "terraform-aws-modules/cloudfront/aws",
+    "version": "5.0.0"
+   }
+  ],
   "context": {
 
   }

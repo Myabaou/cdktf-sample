@@ -78,6 +78,27 @@ STAGE=dev cdktf deploy
 STAGE=dev cdktf destroy
 ```
 
+## module Install
+
+- cdktf.json
+  以下を定義
+
+```json
+  "terraformModules": [
+   {
+    "name":"cdn",
+    "source": "terraform-aws-modules/cloudfront/aws",
+    "version": "5.0.0"
+   }
+  ],
+```
+
+- module install
+
+```sh
+make get
+```
+
 ## Environment Configuration
 
 Environment-specific settings are defined in `lib/environment.ts`:
