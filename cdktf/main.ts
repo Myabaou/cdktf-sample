@@ -15,15 +15,11 @@ if (!environment) {
 const app = new App();
 
 // 統合インフラストラクチャスタック - 環境に必要なすべてのリソースを管理
-// VPC、SQS、その他のリソースを1つのスタックで管理することで、
-// 新しいリソースを追加してもMakefileの修正が不要になります
+// VPCモジュールとSQSモジュールが分離されており、コードの可読性と保守性が向上
+// 新しいリソースを追加する場合は、新しいモジュールを作成してこのスタックに追加
 new InfraStack(app, `${stage}-infra-stack`, {
   stage,
-  region: environment.region,
-  cidr: environment.cidr,
-  enableNatGateway: environment.enableNatGateway,
-  oneNatGatewayPerAz: environment.oneNatGatewayPerAz,
-  sqs: environment.sqs,
+  environment,
 });
 
 // 将来的に追加可能なリソース例:
@@ -32,7 +28,7 @@ new InfraStack(app, `${stage}-infra-stack`, {
 // CloudWatch、X-Ray等を同じinfrra-stackに追加していくことで、
 // 環境ごとに単一のスタックでライフサイクルを管理できます
 //
-// これにより、新しいリソースを追加してもMakefileやCIの修正が不要になり、
-// 運用負荷を軽減できます
+// モジュール化により、各リソースタイプの定義は別ファイルに分離され、
+// 保守性と可読性が向上します
 
 app.synth();
