@@ -1,0 +1,42 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    branches:
+      - main
+
+    types:
+      - opened
+      - labeled
+
+permissions:
+  pull-requests: write
+  contents: read
+
+
+env:
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+  ANTHROPIC_API_KEY: ${{secrets.ANTHROPIC_API_KEY}}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  review:
+    runs-on: ARM-Runner-Default
+    if: github.event.action == 'opened' || (github.event.action == 'labeled' && github.event.label.name == 'ai-review')
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install claude-code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Review
+        run: |
+          claude --print ".github/review-prompt.md の指示に従いレビューしてください。レビュー対象のPR番号（PR_NUMBER）は $PR_NUMBER です。" --allowedTools "Bash(gh pr:*)" > review-result.md
+      - name: Show Review Comment
+        run: cat review-result.md
+      - name: Post Review Comment
+        run: |
+          gh pr comment $PR_NUMBER --body "$(cat review-result.md)"
