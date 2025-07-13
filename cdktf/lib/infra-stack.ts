@@ -1,10 +1,10 @@
 import { Construct } from "constructs";
-import { TerraformStack, TerraformOutput } from "cdktf";
+import { TerraformStack } from "cdktf";
 import { AwsProvider } from "@cdktf/provider-aws/lib/provider";
 import { Environment } from "./environment";
 import { VpcModule } from "../modules/vpc";
 import { SqsModule } from "../modules/sqs";
-import { Cdn } from "../.gen/modules/cdn"; // Assuming you have a Cdn module
+import { CdnModule } from "../modules/cdn";
 
 interface InfraStackProps {
   stage: string;
@@ -38,47 +38,9 @@ export class InfraStack extends TerraformStack {
     });
 
     // Cloudfront CDN Module
-    const cloudFront = new Cdn(this, "cdn", {
-      createDistribution: true,
-      comment: `${props.stage} CloudFront Distribution`,
-      enabled: true,
-
-      // 必須: Origin設定（オブジェクト形式）
-      origin: {
-        "default-origin": {
-          domain_name: "1101.com", // 実際のオリジンドメインに変更してください
-          custom_origin_config: {
-            http_port: 80,
-            https_port: 443,
-            origin_protocol_policy: "https-only",
-            origin_ssl_protocols: ["TLSv1.2"],
-          },
-        },
-      },
-
-      // 必須: Default Cache Behavior（オブジェクト形式）
-      defaultCacheBehavior: {
-        target_origin_id: "default-origin",
-        viewer_protocol_policy: "redirect-to-https",
-        allowed_methods: [
-          "DELETE",
-          "GET",
-          "HEAD",
-          "OPTIONS",
-          "PATCH",
-          "POST",
-          "PUT",
-        ],
-        cached_methods: ["GET", "HEAD"],
-        compress: true,
-        query_string: false,
-        cookies_forward: "none",
-      },
-    });
-    // Cloudfrontの情報を出力
-    new TerraformOutput(this, "cloudfront_distribution_domain_name", {
-      value: cloudFront.cloudfrontDistributionDomainNameOutput,
-      description: "The domain name of the CloudFront distribution",
+    new CdnModule(this, "cdn", {
+      stage: props.stage,
+      domainName: "1101.com", // 実際のオリジンドメインに変更してください
     });
   }
 }
