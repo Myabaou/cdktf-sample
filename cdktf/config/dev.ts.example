@@ -3,8 +3,19 @@
 // cp dev.ts.example dev.ts
 
 export const cdnConfig = {
-  domainName: "exsample.com",
-  aliases: ["exsample.com"],
+  domainName: "example.com",
+  aliases: ["example.com"],
+  s3bucketNameSuffix: "-it-sandbox-cdn-assets",
+  // IP制限設定
+  ipRestriction: {
+    enabled: true, // IP制限を有効にする
+    allowedIps: [
+      "203.104.209.0/24", // オフィスのIP帯域（例）
+      "192.168.1.0/24",   // 開発環境のIP帯域（例）
+      "127.0.0.1",        // ローカルホスト
+      "203.0.113.1",      // 特定のIPアドレス（例）
+    ],
+  },
   certificateConfig: {
     cloudfront_default_certificate: false,
     minimum_protocol_version: "TLSv1.2_2021",

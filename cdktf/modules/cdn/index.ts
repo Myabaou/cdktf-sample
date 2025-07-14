@@ -3,11 +3,16 @@ import { TerraformOutput } from "cdktf";
 import { Cdn } from "../../.gen/modules/cdn";
 import { S3 } from "../../.gen/modules/s3";
 import { S3Object } from "@cdktf/provider-aws/lib/s3-object";
+import { CloudfrontFunction } from "@cdktf/provider-aws/lib/cloudfront-function";
 export interface CdnModuleProps {
   stage: string;
   domainName: string;
   aliases: string[];
   s3bucketNameSuffix: string; // オプション: S3バケット名のサフィックス
+  ipRestriction?: {
+    enabled: boolean;
+    allowedIps: string[];
+  };
   certificateConfig?: {
     acm_certificate_arn: string;
     minimum_protocol_version?: string;
@@ -21,6 +26,33 @@ export class CdnModule extends Construct {
 
   constructor(scope: Construct, id: string, props: CdnModuleProps) {
     super(scope, id);
+
+    // IP制限用のCloudFront Function
+    let ipRestrictionFunction: CloudfrontFunction | undefined;
+
+    if (props.ipRestriction?.enabled) {
+      // ip-restriction.jsを読み込み、allowedIPsを置換
+      const fs = require("fs");
+      const path = require("path");
+      const jsPath = path.join(__dirname, "functions", "ip-restriction.js");
+      let jsCode = fs.readFileSync(jsPath, "utf8");
+      // allowedIPs = [...] の部分をprops.ipRestriction.allowedIpsで置換
+      jsCode = jsCode.replace(
+        /var allowedIPs = \[[^\]]*\];/,
+        `var allowedIPs = ${JSON.stringify(props.ipRestriction.allowedIps)};`
+      );
+      ipRestrictionFunction = new CloudfrontFunction(
+        this,
+        "ip-restriction-function",
+        {
+          name: `${props.stage}-ip-restriction`,
+          runtime: "cloudfront-js-1.0",
+          comment: `IP restriction function for ${props.stage} environment`,
+          publish: true,
+          code: jsCode,
+        }
+      );
+    }
 
     // S3 Bucket for static assets (プライベート設定)
     const s3Bucket = new S3(this, "s3-bucket", {
@@ -49,7 +81,7 @@ export class CdnModule extends Construct {
         s3_origin: {
           domain_name: s3Bucket.s3BucketBucketRegionalDomainNameOutput,
           //   origin_access_control: `${props.stage}-oac`, // OACのIDを指定
-          origin_access_control_id: "E1E8QBCQAMWFD4", // OACのIDを指定
+          origin_access_control_id: "E1E8QBCQAMWFD4", // OACのIDを指定　origin_access_controlが機能しないため固定の値
         },
       },
 
@@ -82,6 +114,15 @@ export class CdnModule extends Construct {
         compress: true,
         query_string: false,
         cookies_forward: "none",
+        // IP制限Functionが有効な場合はオブジェクト形式で設定
+        function_association:
+          props.ipRestriction?.enabled && ipRestrictionFunction
+            ? {
+                "viewer-request": {
+                  function_arn: ipRestrictionFunction.arn,
+                },
+              }
+            : undefined,
       },
       viewerCertificate: props.certificateConfig || {},
     });

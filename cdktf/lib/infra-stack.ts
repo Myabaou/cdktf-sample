@@ -28,6 +28,10 @@ export class InfraStack extends TerraformStack {
       domainName: "example.com", // ダミー値
       aliases: ["dummy.example.com"], // ダミー値
       s3bucketNameSuffix: "-dummy-cdn-assets", // S3バケット名のサフィックス
+      ipRestriction: {
+        enabled: false, // ダミー値では無効
+        allowedIps: ["127.0.0.1"], // ダミー値
+      },
       certificateConfig: {
         cloudfront_default_certificate: true, // ダミー値
         minimum_protocol_version: "TLSv1.2_2021",
@@ -86,6 +90,7 @@ export class InfraStack extends TerraformStack {
       domainName: cdnConfig.domainName,
       aliases: cdnConfig.aliases,
       s3bucketNameSuffix: cdnConfig.s3bucketNameSuffix, // S3バケット名のサフィックス
+      ipRestriction: cdnConfig.ipRestriction, // IP制限設定
       certificateConfig: cdnConfig.certificateConfig,
     });
   }

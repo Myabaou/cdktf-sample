@@ -27,7 +27,7 @@
   },
   "include": [
     "**/*.ts"
-  ],
+, "modules/cdn/functions/ip-restriction.js"  ],
   "exclude": [
     "node_modules",
     "cdktf.out"
