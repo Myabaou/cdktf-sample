@@ -1,0 +1,14 @@
+// 設定ファイルの例
+// このファイルをコピーして dev.ts として使用してください
+// cp dev.ts.example dev.ts
+
+export const cdnConfig = {
+  domainName: "exsample.com",
+  aliases: ["exsample.com"],
+  certificateConfig: {
+    cloudfront_default_certificate: false,
+    minimum_protocol_version: "TLSv1.2_2021",
+    ssl_support_method: "sni-only",
+    acm_certificate_arn: "arn:aws:acm:us-east-1:98877777777:certificate/XXXXXXXXXXXXXXXXXXx",
+  },
+} as const;

@@ -5,6 +5,8 @@ import { Environment } from "./environment";
 import { VpcModule } from "../modules/vpc";
 import { SqsModule } from "../modules/sqs";
 import { CdnModule } from "../modules/cdn";
+import * as fs from "fs";
+import * as path from "path";
 
 interface InfraStackProps {
   stage: string;
@@ -14,6 +16,46 @@ interface InfraStackProps {
 export class InfraStack extends TerraformStack {
   constructor(scope: Construct, id: string, props: InfraStackProps) {
     super(scope, id);
+
+    // 設定ファイルから値を読み込み（なければダミー値を使用）
+    const configPath = path.join(
+      __dirname,
+      "..",
+      "config",
+      `${props.stage}.ts`
+    );
+    let cdnConfig = {
+      domainName: "example.com", // ダミー値
+      aliases: ["dummy.example.com"], // ダミー値
+      certificateConfig: {
+        cloudfront_default_certificate: true, // ダミー値
+        minimum_protocol_version: "TLSv1.2_2021",
+        ssl_support_method: "sni-only",
+        acm_certificate_arn:
+          "arn:aws:acm:us-east-1:123456789012:certificate/dummy-certificate-id", // ダミー値
+      },
+    };
+
+    // TypeScript設定ファイルが存在する場合は動的インポート
+    if (fs.existsSync(configPath)) {
+      try {
+        // 動的インポートでTypeScript設定ファイルを読み込み
+        const configModule = require(configPath);
+        if (configModule.cdnConfig) {
+          cdnConfig = configModule.cdnConfig;
+          console.log(`✅ Loaded CDN config from ${configPath}`);
+        }
+      } catch (error) {
+        console.log(
+          `⚠️  Error loading TypeScript config file, using default values:`,
+          error
+        );
+      }
+    } else {
+      console.log(
+        `⚠️  Config file not found (${configPath}), using dummy values for security`
+      );
+    }
 
     // AWS Provider
     new AwsProvider(this, "aws", {
@@ -40,8 +82,9 @@ export class InfraStack extends TerraformStack {
     // Cloudfront CDN Module
     new CdnModule(this, "cdn", {
       stage: props.stage,
-      domainName: "hobonichi.co.jp", // 実際のオリジンドメインに変更してください
-      aliases: ["mbs-test.it-sandbox.1101.com"],
+      domainName: cdnConfig.domainName,
+      aliases: cdnConfig.aliases,
+      certificateConfig: cdnConfig.certificateConfig,
     });
   }
 }

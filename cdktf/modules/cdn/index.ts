@@ -7,6 +7,12 @@ export interface CdnModuleProps {
   stage: string;
   domainName: string;
   aliases: string[];
+  certificateConfig?: {
+    acm_certificate_arn: string;
+    minimum_protocol_version?: string;
+    ssl_support_method?: string;
+    cloudfront_default_certificate?: boolean;
+  };
 }
 
 export class CdnModule extends Construct {
@@ -76,6 +82,7 @@ export class CdnModule extends Construct {
         query_string: false,
         cookies_forward: "none",
       },
+      viewerCertificate: props.certificateConfig || {},
     });
 
     // CDN関連の出力をすべてここで定義
