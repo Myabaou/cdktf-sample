@@ -27,6 +27,7 @@ export class InfraStack extends TerraformStack {
     let cdnConfig = {
       domainName: "example.com", // ダミー値
       aliases: ["dummy.example.com"], // ダミー値
+      s3bucketNameSuffix: "-dummy-cdn-assets", // S3バケット名のサフィックス
       certificateConfig: {
         cloudfront_default_certificate: true, // ダミー値
         minimum_protocol_version: "TLSv1.2_2021",
@@ -84,6 +85,7 @@ export class InfraStack extends TerraformStack {
       stage: props.stage,
       domainName: cdnConfig.domainName,
       aliases: cdnConfig.aliases,
+      s3bucketNameSuffix: cdnConfig.s3bucketNameSuffix, // S3バケット名のサフィックス
       certificateConfig: cdnConfig.certificateConfig,
     });
   }

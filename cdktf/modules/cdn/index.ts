@@ -7,6 +7,7 @@ export interface CdnModuleProps {
   stage: string;
   domainName: string;
   aliases: string[];
+  s3bucketNameSuffix: string; // オプション: S3バケット名のサフィックス
   certificateConfig?: {
     acm_certificate_arn: string;
     minimum_protocol_version?: string;
@@ -23,7 +24,7 @@ export class CdnModule extends Construct {
 
     // S3 Bucket for static assets (プライベート設定)
     const s3Bucket = new S3(this, "s3-bucket", {
-      bucket: `${props.stage}-it-sandbox-cdn-assets`,
+      bucket: `${props.stage}${props.s3bucketNameSuffix}`,
       forceDestroy: true,
     });
 
