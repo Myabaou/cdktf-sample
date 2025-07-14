@@ -40,7 +40,8 @@ export class InfraStack extends TerraformStack {
     // Cloudfront CDN Module
     new CdnModule(this, "cdn", {
       stage: props.stage,
-      domainName: "1101.com", // 実際のオリジンドメインに変更してください
+      domainName: "hobonichi.co.jp", // 実際のオリジンドメインに変更してください
+      aliases: ["mbs-test.it-sandbox.1101.com"],
     });
   }
 }
