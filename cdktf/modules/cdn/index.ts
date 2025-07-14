@@ -61,10 +61,14 @@ export class CdnModule extends Construct {
     });
 
     // S3 Object Upload
+    const fs = require("fs");
+    const path = require("path");
+    const htmlContent = fs.readFileSync(path.join(__dirname, "content", "index.html"), "utf8");
+    
     new S3Object(this, "index-html", {
       bucket: s3Bucket.s3BucketIdOutput,
       key: "index.html",
-      content: "<html><body><h1>Hello, World!</h1></body></html>",
+      content: htmlContent,
       contentType: "text/html", // HTMLとして表示させるためのContent-Type
     });
 
