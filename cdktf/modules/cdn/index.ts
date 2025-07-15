@@ -128,7 +128,7 @@ export class CdnModule extends Construct {
               }
             : undefined,
       },
-      viewerCertificate: props.certificateConfig || {},
+      ...(props.certificateConfig ? { viewerCertificate: props.certificateConfig } : {}),
     });
 
     // CDN関連の出力をすべてここで定義
