@@ -12,7 +12,7 @@ CDKTF_COMMANDS := diff deploy destroy list watch plan apply output
 # Define additional Terraform commands that are not part of CDKTF
 TERRAFORM_COMMANDS := state show console import refresh validate
 
-.PHONY: help build get synth clean $(CDKTF_COMMANDS) $(TERRAFORM_COMMANDS) tf %
+.PHONY: help build get synth clean $(CDKTF_COMMANDS) $(TERRAFORM_COMMANDS) tf
 
 help: ## Show help
 	@echo "Usage: make <subcommand> [STAGE=<stage>]"
@@ -34,8 +34,8 @@ help: ## Show help
 	@echo "  output      Show stack outputs"
 	@echo ""
 	@echo "Terraform Commands:"
-	@echo "  state       Manage Terraform state"
-	@echo "  show        Show current state"
+	@echo "  state       Manage Terraform state (supports: list, show, mv, rm, etc.)"
+	@echo "  show        Show current state or specific resource"
 	@echo "  console     Interactive console"
 	@echo "  import      Import existing infrastructure"
 	@echo "  refresh     Refresh state"
@@ -46,17 +46,17 @@ help: ## Show help
 	@echo "  STAGE: dev (default), stg, prd"
 	@echo "  TF: true (optional) - Use terraform commands directly instead of cdktf"
 	@echo "  CMD: terraform command with arguments (for tf target only)"
-	@echo "  ARGS: additional arguments for terraform commands"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make diff STAGE=dev      # Show differences for dev"
 	@echo "  make deploy STAGE=stg    # Deploy to staging"
 	@echo "  make destroy STAGE=prd   # Destroy production"
-	@echo "  make TF=true plan        # Run terraform plan directly"
-	@echo "  make TF=true apply       # Run terraform apply directly"
-	@echo "  make state list STAGE=dev # List all resources in state"
-	@echo "  make state mv src dest STAGE=dev # Move resource in state"
-	@echo "  make tf CMD=\"state list\" # Alternative: List all resources"
+	@echo "  make TF=true plan        # Run: terraform plan"
+	@echo "  make TF=true apply       # Run: terraform apply"
+	@echo "  make \"state list\"        # Run: terraform state list"
+	@echo "  make \"state mv src dest\" # Run: terraform state mv src dest"
+	@echo "  make tf CMD=\"state list\" # Alternative: terraform state list"
+	@echo "  make state list STAGE=dev # Run: terraform state list"
 
 # Build commands
 build: ## Build the project
@@ -79,20 +79,25 @@ clean: ## Clean build artifacts
 # Dynamic rule for CDKTF commands
 $(CDKTF_COMMANDS):
 ifeq ($(TF),true)
-	terraform -chdir=./cdktf.out/stacks/$(STACK_NAME) $@
+	terraform -chdir=./cdktf.out/stacks/$(STACK_NAME) $@ $(filter-out $@,$(MAKECMDGOALS))
 else
 	NODE_NO_WARNINGS=1 STAGE=$(STAGE) cdktf $@ $(if $(filter-out list watch,$@),$(STACK_NAME))
 endif
 
 # Rule for Terraform-only commands
 $(TERRAFORM_COMMANDS):
-	terraform -chdir=./cdktf.out/stacks/$(STACK_NAME) $@ $(filter-out $@,$(MAKECMDGOALS)) $(ARGS)
+	terraform -chdir=./cdktf.out/stacks/$(STACK_NAME) $@ $(filter-out $@,$(MAKECMDGOALS))
 
 # Generic rule for any terraform command with arguments
 # Usage: make tf CMD="state mv src dest"
 tf:
 	terraform -chdir=./cdktf.out/stacks/$(STACK_NAME) $(CMD)
 
-# Catch-all rule to ignore additional arguments as targets
+# Catch-all rule to handle any unmatched targets
+# This enables: make "state list", make "state mv src dest", etc.
 %:
-	@:
+	@if echo "$(MAKECMDGOALS)" | grep -q "state"; then \
+		terraform -chdir=./cdktf.out/stacks/$(STACK_NAME) $(MAKECMDGOALS); \
+	else \
+		:; \
+	fi
