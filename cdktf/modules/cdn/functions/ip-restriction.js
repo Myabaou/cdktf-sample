@@ -8,6 +8,10 @@ function handler(event) {
     var allowedIPs = ["127.0.0.1"];
     // IP制限チェック関数
     function isIpAllowed(ip, allowedRanges) {
+        // allowedRangesが空なら全て許可
+        if (!allowedRanges || allowedRanges.length === 0) {
+            return true;
+        }
         for (var i = 0; i < allowedRanges.length; i++) {
             var range = allowedRanges[i];
             if (range.includes('/')) {
