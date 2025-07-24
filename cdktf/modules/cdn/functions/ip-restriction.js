@@ -48,22 +48,14 @@ function handler(event) {
             body: generateAccessDeniedPage(clientIP)
         };
     }
-    // パスが"/"または"/xxx/"のようにスラッシュで終わる場合はindex.htmlにリダイレクト
+    // パスが"/"または"/xxx/"のようにスラッシュで終わる場合はindex.htmlを返すようにuriを書き換え
     if (request.uri.endsWith("/")) {
-        var redirectPath = request.uri + "index.html";
-        // ルートの場合は"/index.html"にする
-        if (redirectPath === "//index.html") {
-            redirectPath = "/index.html";
+        var newUri = request.uri + "index.html";
+        if (newUri === "//index.html") {
+            newUri = "/index.html";
         }
-        return {
-            statusCode: 302,
-            statusDescription: 'Found',
-            headers: {
-                location: { value: redirectPath },
-                'content-type': { value: 'text/html' }
-            },
-            body: '<html><head><meta http-equiv="refresh" content="0; url=' + redirectPath + '"></head><body>Redirecting...</body></html>'
-        };
+        request.uri = newUri;
+        return request;
     }
     return request;
 }
