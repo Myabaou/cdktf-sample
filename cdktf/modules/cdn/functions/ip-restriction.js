@@ -1,4 +1,3 @@
-
 // CloudFront Functions用の純粋なJavaScriptコード例
 // allowedIPsはデプロイ時に置換してください
 function handler(event) {
@@ -6,6 +5,7 @@ function handler(event) {
     var clientIP = event.viewer.ip;
     // 許可されたIPアドレス/CIDR範囲
     var allowedIPs = ["127.0.0.1"];
+        
     // IP制限チェック関数
     function isIpAllowed(ip, allowedRanges) {
         // allowedRangesが空なら全て許可
@@ -52,25 +52,43 @@ function handler(event) {
             body: generateAccessDeniedPage(clientIP)
         };
     }
-    // パスが"/"または"/xxx/"のようにスラッシュで終わる場合はindex.htmlを返すようにuriを書き換え
-    if (request.uri.endsWith("/")) {
-        var newUri = request.uri + "index.html";
+    var uri = request.uri;
+    
+    // ファイル拡張子があるかどうかをチェック（最後のパスセグメントに.が含まれているか）
+    var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
+    var hasFileExtension = lastSegment.includes('.');
+    
+    // パスが"/"で終わる場合はindex.htmlを返すようにuriを書き換え
+    if (uri.endsWith("/")) {
+        // 既に/で終わっている場合
+        var newUri = uri + "index.html";
         if (newUri === "//index.html") {
             newUri = "/index.html";
         }
         request.uri = newUri;
         return request;
+    } else if (isDirectoryAccess) {
+        // ディレクトリアクセスの場合は/を補完してリダイレクト
+        return {
+            statusCode: 301,
+            statusDescription: 'Moved Permanently',
+            headers: {
+                'location': { value: uri + '/' }
+            }
+        };
     }
+    
+    // ファイル拡張子がある場合、またはルートパス（/）の場合はそのまま
     return request;
 }
 function generateAccessDeniedPage(clientIP) {
-    return '<html>' +
-           '<head><title>Access Denied</title>' +
-           '<style>body{font-family:Arial,sans-serif;text-align:center;margin-top:50px;}</style></head>' +
-           '<body>' +
-           '<h1> Access Denied</h1>' +
-           '<p>Your IP address <strong>' + clientIP + '</strong> is not allowed to access this resource.</p>' +
-           '<p>If you believe this is an error, please contact the administrator.</p>' +
-           '<hr><small>CloudFront IP Restriction</small>' +
-           '</body></html>';
+    return 'html' +
+           'headtitleAccess Denied/title' +
+           'stylebody{font-family:Arial,sans-serif;text-align:center;margin-top:50px;}/style/head' +
+           'body' +
+           'h1 Access Denied/h1' +
+           'pYour IP address strong' + clientIP + '/strong is not allowed to access this resource./p' +
+           'pIf you believe this is an error, please contact the administrator./p' +
+           'hrsmallCloudFront IP Restriction/small' +
+           '/body/html';
 }
